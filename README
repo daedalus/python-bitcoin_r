@@ -62,3 +62,11 @@ P2P connections.  If the connection is lost, node.py exits.
 
 See the "mini-node" branch for a single-file, non-chaindb node.
 
+=======================blockchain_r hack =================
+
+mysql -u root -p < schema.sql
+./stage1 -f bootstrap.dat
+./node.py config.cfg
+./stage2 > results.txt
+
+And Have a lot of patience...
