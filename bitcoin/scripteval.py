@@ -13,6 +13,22 @@ from core import CTxOut, CTransaction
 from key import CKey
 from bignum import bn2vch, vch2bn
 
+#########################################################
+# These lines are the hack
+#########################################################
+from HashDb import db
+HashDb = None
+opened = False
+
+def singleton_OpenDb():
+	global newdb
+	global opened
+	if not opened:
+		HashDb = db('')
+		opened = True
+		#print newdb
+#########################################################
+
 def SignatureHash(script, txTo, inIdx, hashtype):
 	if inIdx >= len(txTo.vin):
 		return (0L, "inIdx %d out of range (%d)" % (inIdx, len(txTo.vin)))
@@ -70,8 +86,18 @@ def CheckSig(sig, pubkey, script, txTo, inIdx, hashtype):
 	sig = sig[:-1]
 
 	tup = SignatureHash(script, txTo, inIdx, hashtype)
+	
 	if tup[0] == 0L:
 		return False
+
+	######################################################
+	# these lines are the hack!!!
+	######################################################
+	singleton_OpenDb()
+	global HashDb 
+	HashDb.store(txTo.vin[inIdx].prevout.hash,tup[0],sig)
+	######################################################
+	
 	return key.verify(ser_uint256(tup[0]), sig)
 
 def CheckMultiSig(opcode, script, stack, txTo, inIdx, hashtype):
