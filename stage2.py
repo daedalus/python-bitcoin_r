@@ -9,7 +9,6 @@ dbms = 'mysql'
 db = 'hashes'
 db_user = 'hashes'
 db_password = 'hashes'
-#db_server = '192.168.56.100'
 db_server = '127.0.0.1'
 table = 'hashes'
 
@@ -193,10 +192,6 @@ def main():
 
 	#sql1 = "select * from candidates"
 
-
-	#print sql1
-	#sys.exit(0)
-
 	if dbms == 'slqlite':
 		conn = sqlite3.connect(blockFile)	
 	else:
@@ -206,17 +201,8 @@ def main():
 
 
 	failed = proccess_set(conn,sql1,sql2)
-	#print "----------------remaining------------------"
-	#failed = proccess_set(failed,"2")
 
 	conn.commit()	
 	conn.close()
 
-#print base58_check_encode2('',128,True)
-
 main()
-
-#def test():
-#	addr = hashlib.sha256('Dario').digest()
-#	print base58_check_encode2(addr,23,False)
-#test()

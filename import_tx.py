@@ -19,12 +19,12 @@ from bitcoin.scripteval import VerifySignature
 
 NET_SETTINGS = {
         'mainnet' : {
-                'log' : '/home/dclavijo/chaindb/testscript.log',
-                'db' : '/home/dclavijo/chaindb'
+                'log' : '/tmp/chaindb/testscript.log',
+                'db' : '/tmp/chaindb'
         },
         'testnet3' : {
-                'log' : '/spare/tmp/testtestscript.log',
-                'db' : '/spare/tmp/chaintest'
+                'log' : '/tmp/testtestscript.log',
+                'db' : '/tmp/chaintest'
         }
 }
 
@@ -115,10 +115,6 @@ def chaindb_init():
                           NETWORKS[MY_NETWORK], True)
         chaindb.blk_cache.max = 1000
         return chaindb
-
-
-
-#loadfile("/home/dclavijo/dclavijo_remote/.bitcoin/blk0001.dat")
 
 if (len(sys.argv)>0):
 	tx = sys.argv[1]

@@ -28,12 +28,12 @@ from optparse import OptionParser
 
 NET_SETTINGS = {
 	'mainnet' : {
-		'log' : '/home/dclavijo/chaindb/testscript.log',
-		'db' : '/home/dclavijo/chaindb'
+		'log' : '/tmp/chaindb/testscript.log',
+		'db' : '/tmp/chaindb'
 	},
 	'testnet3' : {
-		'log' : '/spare/tmp/testtestscript.log',
-		'db' : '/spare/tmp/chaintest'
+		'log' : '/tmp/testtestscript.log',
+		'db' : '/tmp/chaintest'
 	}
 }
 
@@ -46,7 +46,6 @@ SKIP_TX = []
 
 msg_start = "f9beb4d9".decode('hex')
 
-#def loadfile(filename,skip_load_height,skip_scan_height,chaindb):
 def loadfile(filename,start,end,chaindb):
 	fd = os.open(filename, os.O_RDONLY)
 	#self.log.write("IMPORTING DATA FROM " + filename)
@@ -98,7 +97,7 @@ def loadfile(filename,start,end,chaindb):
 				print "skiping: %d" % count
 			continue
 
-		if (count >= end):
+		if (end > -1) and (count >= end):
 			print "Exit!"
 			sys.exit(0)	
 
@@ -299,9 +298,9 @@ def main():
 
 	chaindb = chaindb_init()
 
-	#if(options.count and options.blockfile <> None):	
-	#	count = loadfile(options.blockfile,10000000000000000,options.end,chaindb)
-	#	print "COUNT: %d" % count
+	if(options.count and options.blockfile <> None):	
+		count = loadfile(options.blockfile,1,-1,chaindb)
+		print "COUNT: %d" % count
 
 	if options.resettotalwork:
 		resettotalwork(chaindb)
@@ -339,9 +338,6 @@ def main():
 		if opts[0] == opts[1]:
 			opts[1] = int(opts[1]) + 1
 		scan_block_range(chaindb,int(opts[0]),int(opts[1]))
-
-	
-				
 
 if __name__ == "__main__":
     main()
