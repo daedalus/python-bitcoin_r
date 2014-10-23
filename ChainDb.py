@@ -524,6 +524,12 @@ class ChainDb(object):
 		# switching from current chain to another, stronger chain
 		return self.reorganize(block.sha256)
 
+	def height(self,heightstr):
+		try:
+               		return self.db.Get('height:'+heightstr)
+                except KeyError:
+                        pass
+
 	def putoneblock(self, block):
 		block.calc_sha256()
 
