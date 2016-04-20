@@ -2,17 +2,17 @@
 import sqlite3,hashlib,sys,MySQLdb
 from optparse import OptionParser
 
-
+b58_digits = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 count = 0
 
+# dbms configuration
 dbms = 'mysql'
 db = 'hashes'
 db_user = 'hashes'
 db_password = 'hashes'
 db_server = '127.0.0.1'
 table = 'hashes'
-
-p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
 def hexify (s, flip=False):
     if flip:
@@ -33,7 +33,15 @@ def inttohexstr(i):
 	
 	return hexstr
 
-b58_digits = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+def bintoint(i):
+	l = i.encode('hex')
+	l = int(l,16) 
+	return l
+def bintointr(i):
+	i = i[::-1]
+	l = i.encode('hex')
+	l = int(l,16) 
+	return l
 
 def dhash(s):
     return hashlib.sha256(hashlib.sha256(s).digest()).digest()
@@ -72,7 +80,6 @@ def base58_check_encode2(s,version,compressed):
 		payload = s
 	return base58_check_encode(payload,version)
 
-
 def inverse_mult(a,b,p):
 	#print a,b,p
 	y = (a * pow(b,p-2,p)) #(pow(x, y) modulo z) where z should be a prime number
@@ -80,40 +87,38 @@ def inverse_mult(a,b,p):
 
 # here is the wrock!
 def derivate_privkey(p,r,s1,s2,z1,z2):
-	point = inverse_mult(((z1*s2) - (z2*s1)),(r*(s1-s2)),p)
-	privkey = (point % int(p))
+	privkey = []
+	
+	privkey.append((inverse_mult(((z1*s2) - (z2*s1)),(r*(s1-s2)),p) % int(p)))
+	privkey.append((inverse_mult(((z1*s2) - (z2*s1)),(r*(s1+s2)),p) % int(p)))
+	privkey.append((inverse_mult(((z1*s2) - (z2*s1)),(r*(-s1-s2)),p) % int(p)))
+	privkey.append((inverse_mult(((z1*s2) - (z2*s1)),(r*(-s1+s2)),p) % int(p)))
+
 	return privkey
 
-def try_insert(cursor,sql):
+def try_insert(cursor,sql,d):
 	try:
-		cursor.execute(sql)
+		cursor.execute(sql,d)
 	except MySQLdb.IntegrityError as e:
 		#print "%s -> %s" % (sql,e)
 		pass
 
-def try_encodeb58_Privkey(privkey,cursor):
-	if (privkey > 0 and privkey < p):
-        	hexprivkey = inttohexstr(privkey)
-		print ("privkey = %d" % privkey)
-		print ("hexprivkey = %s" % hexprivkey)
-		try:
-			#print len(hexprivkey)
-			binprivkey = hexprivkey.decode('hex')
-			wif = base58_check_encode2(binprivkey,128,False)
-			print "WIF Privkey: %s" % wif
-			try_insert(cursor, "insert into privkeys values ('%s','%s')" % (hexprivkey,wif))
-			wif = base58_check_encode2(binprivkey,128,True)
-			print "WIF Privkey: %s (compressed)" % wif
-			try_insert(cursor, "insert into privkeys values ('%s','%s')" % (hexprivkey,wif))
+def try_insert_privkeys(privkeys,cursor):
+	ignore = False
+	if len(privkeys) >0:
+		for privkey in privkeys:
+			if (privkey > 0 and privkey < p):
+        			hexprivkey = inttohexstr(privkey)
+				#print ("%s" % hexprivkey)
+				try:
+					if ignore:
+						try_insert(cursor, "INSERT IGNORE INTO privkeys VALUES (%s)", hexprivkey.decode('hex'))
+					else:
+						try_insert(cursor, "INSERT INTO privkeys VALUES (%s)", hexprivkey.decode('hex'))
 
-			#print sql
-			return True
-		except:
-			print "Failed to encode privkey in base58 maybe it's outside the curve..."
-			return False
-	else:
-		"Error Privkey result: 0"
-		return False
+				except:
+					print "Other error..."
+
 
 def print_r(r1,s1,s2,hash1,hash2):
 	print "r1 %s" % inttohexstr(r1)
@@ -125,73 +130,85 @@ def print_r(r1,s1,s2,hash1,hash2):
 def proccess_set(conn,sql1,sql2):
 	cursor = conn.cursor()
 	cursor.execute(sql1)
+
 	if cursor:
 		cursor2 = conn.cursor()
 		cursor3 = conn.cursor()
-		cursor4 = conn.cursor()
+		#cursor4 = conn.cursor()
 		failed = []
 		for row in cursor:
-			sql = sql2 % row[0]
-			r = row[0]
-			#print sql
-			cursor2.execute(sql)
-			try_insert(cursor4,"insert into candidates values ('%s')" % r)
+                        r = row[0]
+			cursor2.execute(sql2,r)
+			#try_insert(cursor4,"INSERT IGNORE INTO candidates VALUES (%s)", r)
 			if (cursor2):
 				i = 0
 				tmp = []
 				for row2 in cursor2:
 					tmp.append(row2)
 					i+=1
-
+				
 				if (i > 1):
-					for i in xrange(0,len(tmp)/2):
-						j=i
-						k=i+1
-						if (tmp[j] and tmp[k]):
-							r1 = int(row[0],16)
-							s1 = int(tmp[j][2],16)
-							s2 = int(tmp[k][2],16)
-							hash1 = int(tmp[j][3],16)
-							hash2 = int(tmp[k][3],16)
+					for j in xrange(0,len(tmp)):
+						for k in xrange(0,len(tmp)):
+							if ((j != k) and (tmp[j] and tmp[k])):
+								r1 = bintoint(row[0])
+								s1 = bintoint(tmp[j][2])
+								s2 = bintoint(tmp[k][2])
+								hash1 = bintointr(tmp[j][3])
+								hash2 = bintointr(tmp[k][3])
 
-							#print_r(r1,s1,s2,hash1,hash2)
-							d = (s1-s2)
-							f = (s2-s1)
+								#print_r(r1,s1,s2,hash1,hash2)
+								d = (s1-s2)
+								f = (s2-s1)
 
-							if (s1 != s2):				
-								print "r: %s" % r
-								privkey = derivate_privkey(p,r1,s1,s2,hash1,hash2)
-								#privkey = derivate_privkey(p,r1,s2,s1,hash2,hash1)
-								failed = (try_encodeb58_Privkey(privkey,cursor3) == False)
-							else:
-								print "Error Privkey not computable s1 == s2\n d:%s f:%s" % (hex(d),hex(f))
-								failed = True
-							#if failed:
-							#	try_insert(cursor3,"insert into failed ('%s')" % r1)
+								if (s1 != s2):				
+									privkeys = derivate_privkey(p,r1,s1,s2,hash1,hash2)
+									try_insert_privkeys(privkeys,cursor3)
+								else:
+									print "Error Privkey not computable s1 == s2\n d:%s f:%s" % (hex(d),hex(f))
+									failed = True
 
-
-		#return failed
 
 def main():
 	failed = []
 	parser = OptionParser()
   	parser.add_option("-r",dest="r", help="specify an r")
-        (options,args) = parser.parse_args()
+        parser.add_option("-c",dest="crunch", help="crunch data")
+        parser.add_option("-e",dest="exclude", help="exclude candidate")
+        parser.add_option("-l",dest="limit", help="limit candidate crunching")
+
+	(options,args) = parser.parse_args()
 
 	#sql1 = "select r,count(r) as cr,count(s) as cs from results group by r,s having cr > 1 and cs > 1 order by r,s;"
 
-	if options.r:
-		sql1 = "select * from candidates where r = '%s'" % options.r
-	else:
-		sql1 = "select r,count(r) as cr from hashes group by r having cr > 1 order by r;"
+	#if options.r:
+	#	sql1 = "select * from candidates where r = '%s'" % options.r
+	#else:
+	#	sql1 = "select SQL_BIG_RESULT r,count(r) as cr from %s group by r having cr > 1 order by r;" % table
+	#	#sql1 = "select * from view_r1;"
 
 	#sql2 = "select * from results where r = '%s' limit %s" 
 	#sql1 = "select * from results group by r;"
+
+	# crunching sql, finds witch r's are duplicated
+	sql0 = "replace into candidates (select * from view_r_dups);"
+
+	# specify wether r to crunch
+	if options.exclude:	
+		sql1 = "select r from candidates where r != unhex('%s');" % options.exclude
+	else:
+		if options.r:
+			sql1 = "select * from candidates where r = '%s'" % options.r
+		else:
+			sql1 = "select r from candidates"
 	
-	sql2 = "select * from hashes where r='%s' group by s;"
+	# specify how much tx from a r to crunch
+   	if options.limit
+        	sql2 = 'select * from hashes where r=%s group by s LIMIT %d' % (,options.limit)
+       	else:
+        	sql2 = 'select * from hashes where r=%s group by s'
 
-	#sql1 = "select * from candidates"
-
+	# specifty wich dbms to use
 	if dbms == 'slqlite':
 		conn = sqlite3.connect(blockFile)	
 	else:
@@ -199,10 +216,17 @@ def main():
 
 	conn.autocommit(True)
 
+	cursor = conn.cursor()
 
-	failed = proccess_set(conn,sql1,sql2)
+	# do the actual crunch
+	if options.crunch:
+        	cursor.execute(sql0)
+	
+	# derivation after crunching
+	proccess_set(conn,sql1,sql2)
 
 	conn.commit()	
 	conn.close()
 
-main()
+if __name__ == "__main__":
+	main()

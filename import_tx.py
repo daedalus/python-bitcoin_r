@@ -19,8 +19,8 @@ from bitcoin.scripteval import VerifySignature
 
 NET_SETTINGS = {
         'mainnet' : {
-                'log' : '/tmp/chaindb/testscript.log',
-                'db' : '/tmp/chaindb'
+                'log' : '/media/vdf1/chaindb/testscript.log',
+                'db' : '/media/vdf1/chaindb'
         },
         'testnet3' : {
                 'log' : '/tmp/testtestscript.log',
@@ -93,22 +93,22 @@ def scan_vtx(block):
                         sys.exit(1)
 
 def scan_tx(tx):
-        tx.calc_sha256()
+	if tx:
+        	tx.calc_sha256()
+        	for i in xrange(len(tx.vin)):
+                	txin = tx.vin[i]
+                	txfrom = chaindb.gettx(txin.prevout.hash)
+                	if not VerifySignature(txfrom, tx, i, 0):
+                        	log.write("TX %064x/%d failed" % (tx.sha256, i))
+                        	log.write("FROMTX %064x" % (txfrom.sha256,))
+                        	log.write(txfrom.__repr__())
+                        	log.write("TOTX %064x" % (tx.sha256,))
+                        	log.write(tx.__repr__())
+                        	return False
+		return True
+	else:
+		return False
 
-        if tx.sha256 in SKIP_TX:
-                return True
-
-        for i in xrange(len(tx.vin)):
-                txin = tx.vin[i]
-                txfrom = chaindb.gettx(txin.prevout.hash)
-                if not VerifySignature(txfrom, tx, i, 0):
-                        log.write("TX %064x/%d failed" % (tx.sha256, i))
-                        log.write("FROMTX %064x" % (txfrom.sha256,))
-                        log.write(txfrom.__repr__())
-                        log.write("TOTX %064x" % (tx.sha256,))
-                        log.write(tx.__repr__())
-                        return False
-        return True
 
 def chaindb_init():
         chaindb = ChainDb.ChainDb(SETTINGS,SETTINGS['db'], log, mempool,
@@ -117,12 +117,19 @@ def chaindb_init():
         return chaindb
 
 if (len(sys.argv)>0):
-	tx = sys.argv[1]
+	#tx = sys.argv[1]
 	chaindb = chaindb_init()
-	hash = int(tx,16)
-	txfrom = chaindb.gettx(hash)
-	print scan_tx(txfrom)
-	#print txfrom
+	fp = open(sys.argv[1])
+	for line in fp.readlines():
+		tx = line.replace('\n','').replace('\r','')
+		#try:
+		hash = int(tx,16)
+		txfrom = chaindb.gettx(hash)
+		print tx,scan_tx(txfrom)
+		#except:
+		#	print tx,"False"
+	fp.close()
+
 
 
 
