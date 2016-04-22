@@ -173,7 +173,8 @@ def main():
 	failed = []
 	parser = OptionParser()
   	parser.add_option("-r",dest="r", help="specify an r")
-        parser.add_option("-c",dest="crunch", help="crunch data")
+        parser.add_option("-n",dest="nocrunch", help="no crunch data")
+        parser.add_option("-d",dest="noderivate", help="no derivate privkeys")
         parser.add_option("-e",dest="exclude", help="exclude candidate")
         parser.add_option("-l",dest="limit", help="limit candidate crunching")
 
@@ -219,11 +220,12 @@ def main():
 	cursor = conn.cursor()
 
 	# do the actual crunch
-	if options.crunch:
+	if not options.nocrunch:
         	cursor.execute(sql0)
 	
 	# derivation after crunching
-	proccess_set(conn,sql1,sql2)
+	if not options.noderivate:
+		proccess_set(conn,sql1,sql2)
 
 	conn.commit()	
 	conn.close()
