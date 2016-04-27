@@ -96,12 +96,23 @@ def derivate_privkey(p,r,s1,s2,z1,z2):
 
 	return privkey
 
+i = 0
 def try_insert(cursor,sql,d):
+	global i
+	i+=1
+
 	try:
 		cursor.execute(sql,d)
+		print '!',
+
 	except MySQLdb.IntegrityError as e:
 		#print "%s -> %s" % (sql,e)
+		print '.',
 		pass
+
+	if (i == 80):
+		print ''
+		i = 0
 
 def try_insert_privkeys(privkeys,cursor):
 	ignore = False
