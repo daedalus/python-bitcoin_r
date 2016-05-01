@@ -20,13 +20,13 @@ import re
 import random
 import cStringIO
 import copy
-import re
 import hashlib
 import rpc
+import Log
 
 import ChainDb
 import MemPool
-import Log
+
 from bitcoin.core import *
 from bitcoin.serialize import *
 from bitcoin.messages import *
