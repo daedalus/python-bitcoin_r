@@ -215,8 +215,8 @@ def main():
 			sql1 = "select r from candidates"
 	
 	# specify how much tx from a r to crunch
-   	if options.limit
-        	sql2 = 'select * from hashes where r=%s group by s LIMIT %d' % (,options.limit)
+   	if options.limit:
+        	sql2 = 'select * from hashes where r=%s group by s LIMIT %d' % ('%s',options.limit)
        	else:
         	sql2 = 'select * from hashes where r=%s group by s'
 
