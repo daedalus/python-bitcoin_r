@@ -116,9 +116,9 @@ def try_insert(cursor,sql,d):
 
 def try_insert_privkeys(privkeys,cursor):
 	ignore = False
-	if len(privkeys) >0:
+	if privkeys:
 		for privkey in privkeys:
-			if (privkey > 0 and privkey < p):
+			if (p > privkey > 0):
         			hexprivkey = inttohexstr(privkey)
 				#print ("%s" % hexprivkey)
 				try:
