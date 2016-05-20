@@ -81,7 +81,7 @@ class HeightIdx(object):
 
 class ChainDb(object):
 	def __init__(self, settings, datadir, log, mempool, netmagic,
-		     readonly=False, fast_dbm=False):
+		     readonly=False, fast_dbm=False,compression=False):
 		self.settings = settings
 		self.log = log
 		self.mempool = mempool
@@ -91,6 +91,7 @@ class ChainDb(object):
 		self.blk_cache = Cache(1000)
 		self.orphans = {}
 		self.orphan_deps = {}
+		self.compress_on_write = compression
 
 		# LevelDB to hold:
 		#    tx:*      transaction outputs
@@ -204,8 +205,12 @@ class ChainDb(object):
 				recvbuf = self.blk_read.read(msg_len)
 			
 				f = cStringIO.StringIO(zlib.decompress(recvbuf))
+				msg = message_read(self.netmagic, f)
+			else:	
+				self.blk_read.seek(fpos)
+				msg = message_read(self.netmagic, self.blk_read)
 			
-			msg = message_read(self.netmagic, f)
+			
 			if msg is None:
 				return None
 			block = msg.block
@@ -573,9 +578,9 @@ class ChainDb(object):
 		# write "block" msg to storage
 		fpos = self.blk_write.tell()
 		
-
-		msg_data = zlib.compress(msg_data,1)
-		msg_data = struct.pack('>4si%ds' % len(msg_data),'ZLIB',len(msg_data),msg_data)
+		if self.compress_on_write:
+			msg_data = zlib.compress(msg_data,1)
+			msg_data = struct.pack('>4si%ds' % len(msg_data),'ZLIB',len(msg_data),msg_data)
 
 		self.blk_write.write(msg_data)
 		self.blk_write.flush()
